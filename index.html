@@ -78,8 +78,8 @@ async function google(){try{await A.signInWithPopup(new firebase.auth.GoogleAuth
 
 A.onAuthStateChanged(async u=>{unsubs.forEach(f=>f());unsubs=[];if(!u){me=null;return authUI()}
  let r=await D.doc('users/'+u.uid).get();
- if(!r.exists){await D.doc('users/'+u.uid).set({name:window._nm||u.displayName||'مستخدم',code:rc(),followers:0,votes:0,secs:0});r=await D.doc('users/'+u.uid).get()}
- me={id:u.uid,...r.data()};
+ if(!r.exists){await D.doc('users/'+u.uid).set({name:window._nm||u.displayName||'مستخدم',code:rc(),followers:0,votes:0,secs:0,coins:0});r=await D.doc('users/'+u.uid).get()}
+ me={id:u.uid,...r.data()};if(me.banned){alert('تم إيقاف حسابك من الإدارة');return A.signOut()}if(me.warn&&localStorage.getItem('w')!=me.warn){alert('⚠ تحذير من الإدارة:\n'+me.warn);try{localStorage.setItem('w',me.warn)}catch(e){}}
  try{isAdmin=(await D.doc('admins/'+u.uid).get()).exists?1:0}catch(e){isAdmin=0}
  unsubs.push(D.collection('polls').orderBy('created','desc').limit(60).onSnapshot(s=>{polls=s.docs.map(d=>({id:d.id,...d.data()}));rank();const k=polls.map(p=>p.id).join();if(tab=='feed'){k==key?patchAll():drawFeed()}key=k}));
  unsubs.push(D.collection('votes').where('u','==',u.uid).onSnapshot(s=>{mine={};s.docs.forEach(d=>mine[d.data().p]=d.data().c);if(tab=='feed')drawFeed()}));
@@ -100,7 +100,7 @@ function rank(){const now=Date.now(),sc=p=>Math.log(1+(p.ownerFollowers||0))*3-(
 const media=o=>{const u=U(o.url);return !u?'':o.t=='video'?`<video src="${u}" controls playsinline></video>`:o.t=='audio'?`<audio src="${u}" controls></audio>`:`<img src="${u}" loading="lazy" alt="">`};
 const fd=ms=>{const m=Math.round(ms/6e4);return m<60?m+' دقيقة':m<1440?(m%60?Math.floor(m/60)+' ساعة و'+m%60+' دقيقة':m/60+' ساعة'):m%1440?Math.floor(m/1440)+' يوم و'+Math.round(m%1440/60)+' ساعة':m/1440+' يوم'};
 const card=p=>`<section class="card" id="c-${p.id}"><div class="top"><b class="own" onclick="openUser('${p.owner}')">@${E(p.ownerName)}</b><span class="pill" id="s-${p.id}"></span></div><h2>${E(p.title)}</h2><div class="pills"><span class="pill">⏱ المدة ${fd(p.end-p.start)}</span><span class="pill" id="t-${p.id}"></span><span class="pill">🔎 ${p.code}</span></div><div class="lead-box" id="l-${p.id}"></div>`+
- p.o.map((o,i)=>`<div class="o">${media(o)}<button class="v ${mine[p.id]==i?'my':''}" onclick="vote('${p.id}',${i})"><i id="b-${p.id}-${i}"></i><span>${E(o.x||'خيار '+(i+1))}${mine[p.id]==i?' ✓':''}</span><span id="p-${p.id}-${i}"></span></button></div>`).join('')+
+ p.o.map((o,i)=>`<div class="o">${media(o)}<button class="v ${mine[p.id]==i?'my':''}" onclick="vote('${p.id}',${i})"><i id="b-${p.id}-${i}"></i><span>${E(o.x||'خيار '+(i+1))}${mine[p.id]==i?' ✓':''}</span><span id="p-${p.id}-${i}"></span></button>${gr(p,o,i)}</div>`).join('')+
  `<div class="m" id="n-${p.id}"></div><button class="s" onclick="share('${p.id}')">📷 صورة النتيجة</button></section>`;
 function drawFeed(){const m=$('#main'),old=$('#feed')?.scrollTop||0;
  m.innerHTML=`<button id="au" class="s" onclick="toggleAuto()">${auto?'⏸ تلقائي':'▶ كل 15 ثانية'}</button><div id="feed">`+(polls.length?polls.map(card).join(''):'<div class="p"><p class="m">لسه مفيش انتخابات. أول ما الإدارة تنزّل انتخاب هيظهر هنا.</p></div>')+'</div>';
@@ -176,7 +176,7 @@ const userRow=(id,u)=>`<div class="u"><span onclick="openUser('${id}')" style="c
 async function votesOf(id,n){const s=await D.collection('votes').where('u','==',id).limit(40).get(),v=s.docs.map(d=>d.data()).sort((a,b)=>(b.t||0)-(a.t||0)).slice(0,n),ps=await Promise.all(v.map(x=>D.doc('polls/'+x.p).get()));
  return v.map((x,i)=>{if(!ps[i].exists)return'';const p=ps[i].data(),o=p.o[x.c]||{};return `<div class="u"><span>${E(p.title)}</span><b style="color:var(--a)">${E(o.x||'خيار '+(+x.c+1))}</b></div>`}).join('')||'<p class="m">لسه ما صوّتش على حاجة.</p>'}
 async function drawMe(){$('#main').innerHTML=`<div class="p"><div style="display:flex;gap:12px;align-items:center">${av(me)}<div><h2>${E(me.name)}</h2><small class="m">${me.followers||0} متابع • بتتابع ${follows.size}</small></div></div>
-<label class="m">غيّر صورة الحساب</label><input type="file" accept="image/*" onchange="setPhoto(this)">
+<div class="u"><span>رصيدك</span><b style="color:var(--a);font-size:20px">🪙 ${(me.coins||0).toLocaleString('ar-EG')}</b></div><label class="m">غيّر صورة الحساب</label><input type="file" accept="image/*" onchange="setPhoto(this)">
 <div class="u"><span>كود صفحتك (شاركه مع أصحابك)</span><b style="font-size:20px;color:var(--a)">${me.code}</b></div>
 <h3>صوّتّ على</h3><div id="mv" class="p" style="padding:0"><p class="m">...</p></div><h3>اللي بتتابعهم</h3><div id="mf" class="p" style="padding:0"><p class="m">...</p></div><button class="s" onclick="A.signOut()">تسجيل الخروج</button></div>`;
  $('#mv').innerHTML=await votesOf(me.id,15);
@@ -185,4 +185,19 @@ async function drawMe(){$('#main').innerHTML=`<div class="p"><div style="display
  if($('#mf'))$('#mf').innerHTML=h||'<p class="m">لسه مابتتابعش حد. دوّر بالكود وتابع أصحابك.</p>'}
 function setPhoto(i){const f=i.files[0];if(!f)return;const im=new Image();im.onload=()=>{const c=document.createElement('canvas'),r=Math.min(im.width,im.height);c.width=c.height=160;c.getContext('2d').drawImage(im,(im.width-r)/2,(im.height-r)/2,r,r,0,0,160,160);D.doc('users/'+me.id).update({photo:c.toDataURL('image/jpeg',.7)}).then(()=>setTimeout(drawMe,700)).catch(e=>alert('تعذر حفظ الصورة: '+e.message))};im.src=URL.createObjectURL(f)}
 async function openUser(id){tab='search';go('search');const d=await D.doc('users/'+id).get();if(!d.exists)return;$('#res').innerHTML=userRow(id,d.data())+'<h3 style="margin-top:10px">صوّت على</h3>'+await votesOf(id,20)}
+
+const gr=(p,o,i)=>Date.now()>=p.end?'':`<div class="row"><button class="s" onclick="openGift('${p.id}',${i})">🎁 رمي هدية</button>${o.t=='account'&&o.acc?`<button class="s" onclick="openUser('${o.acc}')">👤 نشاط الحساب</button>`:''}</div>`;
+let GF=null;
+async function openGift(pid,i){if(!GF){const s=await D.collection('gifts').get();GF=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.price-b.price)}
+ if(!GF.length)return alert('لسه مفيش هدايا');const d=document.createElement('div');d.id='gm';d.style.cssText='position:fixed;inset:0;background:#000b;z-index:9;display:flex;align-items:flex-end';
+ d.innerHTML=`<div style="background:var(--bg);width:100%;max-height:75dvh;overflow:auto;border-radius:20px 20px 0 0;padding:14px"><div class="u" style="margin-bottom:8px"><b>🪙 رصيدك ${(me.coins||0).toLocaleString('ar-EG')}</b><button class="s" onclick="$('#gm').remove()">إغلاق</button></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${GF.map(g=>`<button class="s" style="padding:10px 4px" onclick="buyGift('${pid}',${i},'${g.id}')"><span style="font-size:30px;display:block">${g.e}</span><small>${E(g.n)}</small><br><small class="m">🪙 ${g.price} • +${g.pts}</small></button>`).join('')}</div></div>`;document.body.append(d)}
+async function buyGift(pid,i,gid){const p=polls.find(x=>x.id==pid),g=GF.find(x=>x.id==gid);if(Date.now()>=p.end)return alert('الانتخاب انتهى');if((me.coins||0)<g.price)return alert('رصيدك مش كفاية');
+ if(!confirm('رمي '+g.e+' '+g.n+' بـ '+g.price+' عملة؟'))return;const id=me.id+'_'+Date.now(),b=D.batch();
+ b.set(D.doc('giftlog/'+id),{u:me.id,un:me.name,poll:pid,pt:p.title,opt:String(i),g:g.id,gn:g.e+' '+g.n,price:g.price,pts:g.pts,t:Date.now()});
+ b.update(D.doc('users/'+me.id),{coins:F.increment(-g.price),lg:id});b.update(D.doc('polls/'+pid),{['g.'+i]:F.increment(g.pts),lg:id});
+ try{await b.commit();$('#gm')?.remove();alert('✓ اترميت الهدية، ولو اختيارك كسب فلوسك بترجعلك')}catch(e){alert('تعذر: '+e.message)}}
+function patchAll(){const now=Date.now();polls.forEach(p=>{const V=i=>(p.v||{})[i]||0,G=i=>(p.g||{})[i]||0,vs=p.o.map((_,i)=>V(i)+G(i)),n=vs.reduce((a,b)=>a+b,0),mx=Math.max(...vs),w=vs.filter(x=>x==mx).length,ended=now>=p.end;
+ p.o.forEach((o,i)=>{const pc=n?Math.round(vs[i]/n*100):0,b=$('#b-'+p.id+'-'+i),x=$('#p-'+p.id+'-'+i);if(!b)return;b.style.width=pc+'%';x.textContent=pc+'% • '+V(i)+' صوت'+(G(i)?' + '+G(i)+' نقطة':'');b.parentElement.classList.toggle('lead',n>0&&vs[i]==mx&&w==1)});
+ const l=$('#l-'+p.id);if(l){const top=vs.indexOf(mx),sec=[...vs].sort((a,b)=>b-a)[1];l.innerHTML=!n?'<span class="m">لسه مفيش أصوات، كن أول من يصوّت</span>':w>1?'<b>تعادل</b> بين '+w+' خيارات':(ended?'🏆 الفائز':'👑 المتصدر')+': <b>'+E(p.o[top].x||'خيار '+(top+1))+'</b> بفارق '+(mx-sec)+' نقطة'}
+ const nn=$('#n-'+p.id);if(nn)nn.textContent='إجمالي النقاط (أصوات + هدايا): '+n});tick()}
 </script></body></html>
