@@ -1,0 +1,53 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex">
+<title>الإدارة</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e1424;--c:#18213a;--l:#2c3a63;--t:#f4f1e8;--m:#9aa5d1;--a:#f2b134}
+*{box-sizing:border-box;margin:0;font-family:Cairo,system-ui,sans-serif}
+body{background:var(--bg);color:var(--t);min-height:100dvh}
+input,select,textarea,button{font:inherit;color:inherit;background:var(--c);border:1px solid var(--l);border-radius:12px;padding:11px;width:100%}
+button{background:var(--a);color:#0e1424;border:0;font-weight:900;cursor:pointer}button.s{background:var(--c);color:var(--t);border:1px solid var(--l);font-weight:400}
+.p{padding:16px;display:flex;flex-direction:column;gap:10px;max-width:640px;margin:auto}
+.tabs{display:flex;gap:4px;position:sticky;top:0;background:var(--bg);padding:8px;z-index:3;overflow-x:auto}
+.tabs button{width:auto;white-space:nowrap;background:var(--c);color:var(--m);font-weight:400;padding:8px 14px}.tabs button.on{background:var(--a);color:#0e1424;font-weight:900}
+.u{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--c);padding:10px 12px;border-radius:12px}
+.u button{width:auto;padding:6px 14px}.m{color:var(--m);font-size:13px}
+.k{display:grid;grid-template-columns:1fr 1fr;gap:8px}.k div{background:var(--c);border-radius:12px;padding:14px;font-size:13px;color:var(--m)}.k b{display:block;font-size:26px;color:var(--t)}
+.row{display:flex;gap:8px}.row>*{flex:1}.o{display:flex;flex-direction:column;gap:6px}
+</style></head><body><div id="app"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const CFG={apiKey:"AIzaSyBghKRFcPzwg2I_n6OVZV4w7GVA3WF48jc",authDomain:"vote-app-c9647.firebaseapp.com",projectId:"vote-app-c9647",appId:"1:1091416401804:web:644298593f78fa856558a9"};
+firebase.initializeApp(CFG);
+const A=firebase.auth(),D=firebase.firestore(),$=s=>document.querySelector(s),E=s=>(s+'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+const em=n=>[...new TextEncoder().encode(n.trim().toLowerCase())].map(b=>b.toString(16).padStart(2,'0')).join('')+'@vote.app';
+const rc=()=>String(Math.floor(Math.random()*9e10)+1e10),dur={m:6e4,h:36e5,d:864e5,w:6048e5};
+const TY={text:'نص فقط',account:'حساب',image:'صورة',gif:'صورة متحركة',video:'فيديو',audio:'تسجيل صوتي'};
+const ft=s=>{s=s||0;const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+' س '+m+' د':m+' د'};
+let me,us=[],pl=[];
+function login(msg){$('#app').innerHTML=`<div class="p" style="min-height:100dvh;justify-content:center"><h1>دخول الإدارة</h1><input id="n" placeholder="اسم الإدارة"><input id="k" type="password" placeholder="الرمز"><button onclick="go()">دخول</button><p class="m" id="er">${msg||''}</p></div>`}
+async function go(){try{await A.signInWithEmailAndPassword(em($('#n').value),$('#k').value)}catch(e){$('#er').textContent='الاسم أو الرمز غلط'}}
+A.onAuthStateChanged(async u=>{if(!u)return login();let ok=0;try{ok=(await D.doc('admins/'+u.uid).get()).exists}catch(e){}
+ if(!ok){await A.signOut();return login('هذا الحساب ليس حساب إدارة')}
+ me=u;$('#app').innerHTML=`<div class="tabs">${[['sum','الملخص'],['acc','الحسابات'],['new','انتخاب جديد'],['pol','الانتخابات'],['msg','الرسائل']].map(t=>`<button id="t-${t[0]}" onclick="tab('${t[0]}')">${t[1]}</button>`).join('')}<button class="s" onclick="A.signOut()">خروج</button></div><div class="p" id="v"></div>`;tab('sum')});
+async function load(){const[a,b]=await Promise.all([D.collection('users').get(),D.collection('polls').orderBy('created','desc').get()]);us=a.docs.map(d=>({id:d.id,...d.data()}));pl=b.docs.map(d=>({id:d.id,...d.data()}))}
+async function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.id=='t-'+t));$('#v').innerHTML='<p class="m">جاري التحميل...</p>';await load();({sum,acc,new:nw,pol,msg})[t]()}
+function sum(){const v=pl.reduce((a,p)=>a+(p.n||0),0),t=us.reduce((a,u)=>a+(u.secs||0),0);$('#v').innerHTML=`<div class="k"><div><b>${us.length}</b>حساب</div><div><b>${pl.length}</b>انتخاب</div><div><b>${v}</b>إجمالي الأصوات</div><div><b>${ft(t)}</b>إجمالي وقت الاستخدام</div></div>`}
+function acc(){$('#v').innerHTML=`<select id="lm" onchange="lst()"><option>10</option><option>50</option><option>100</option><option value="9999">الكل</option></select><select id="so" onchange="lst()"><option value="secs">الأكثر وقتًا في التطبيق</option><option value="votes">الأكثر تصويتًا</option><option value="followers">الأكثر متابعين</option></select><div id="ul"></div>`;lst()}
+function lst(){const k=+$('#lm').value,f=$('#so').value;$('#ul').innerHTML=[...us].sort((a,b)=>(b[f]||0)-(a[f]||0)).slice(0,k).map((u,i)=>`<div class="u"><span><b>${i+1}. ${E(u.name)}</b><br><small class="m">كود ${u.code} • ${u.followers||0} متابع</small></span><span class="m">${ft(u.secs)}<br>${u.votes||0} تصويت</span></div>`).join('')}
+function nw(){$('#v').innerHTML=`<datalist id="acs">${us.map(u=>`<option value="${E(u.name)}">`).join('')}</datalist><h2>انتخاب جديد</h2><input id="ti" placeholder="سؤال الانتخاب"><div id="ops"></div><button class="s" onclick="addOpt()">+ إضافة خيار</button><div class="row"><input id="du" type="number" min="1" value="1"><select id="un"><option value="m">دقيقة</option><option value="h" selected>ساعة</option><option value="d">يوم</option><option value="w">أسبوع</option></select></div><label class="m">يبدأ بعد كام دقيقة (0 = فورًا)</label><input id="st" type="number" min="0" value="0"><button onclick="pub()">نشر الانتخاب</button><p id="er" class="m"></p>`;addOpt();addOpt()}
+function addOpt(){const d=document.createElement('div');d.className='o';d.innerHTML=`<div class="row"><select class="ty">${Object.entries(TY).map(e=>`<option value="${e[0]}">${e[1]}</option>`).join('')}</select><input class="tx" list="acs" placeholder="النص أو اسم الحساب"></div><input class="ur" placeholder="رابط الوسائط https://... (للصورة/فيديو/صوت)">`;$('#ops').append(d)}
+async function pub(){const o=[...document.querySelectorAll('#ops .o')].map(d=>({t:d.querySelector('.ty').value,x:d.querySelector('.tx').value.trim(),url:d.querySelector('.ur').value.trim()}));const t=$('#ti').value.trim();
+ if(!t||o.length<2||o.some(x=>!x.x&&!x.url))return $('#er').textContent='اكتب السؤال وخيارين على الأقل.';
+ const s=Date.now()+(+$('#st').value||0)*6e4,e=s+(+$('#du').value||1)*dur[$('#un').value],v={};o.forEach((_,i)=>v[i]=0);
+ try{await D.collection('polls').add({title:t,o,v,n:0,start:s,end:e,created:Date.now(),code:rc(),owner:me.uid,ownerName:'الإدارة',ownerFollowers:100});$('#er').textContent='✓ تم النشر';tab('pol')}catch(x){$('#er').textContent=x.message}}
+function pol(){$('#v').innerHTML=pl.map(p=>{const now=Date.now(),st=now<p.start?'قريبًا':now>=p.end?'انتهى':'مباشر';return `<div class="u"><span><b>${E(p.title)}</b><br><small class="m">${st} • ${p.n||0} صوت • كود ${p.code}</small></span><span style="display:flex;gap:6px">${st=='مباشر'?`<button class="s" onclick="endNow('${p.id}')">إنهاء</button>`:''}<button class="s" onclick="del('${p.id}')">حذف</button></span></div>`}).join('')||'<p class="m">مفيش انتخابات.</p>'}
+async function endNow(id){await D.doc('polls/'+id).update({end:Date.now()});tab('pol')}
+async function del(id){if(confirm('حذف الانتخاب؟')){await D.doc('polls/'+id).delete();tab('pol')}}
+async function msg(){const s=await D.collection('msgs').orderBy('t','desc').limit(100).get();$('#v').innerHTML=s.docs.map(d=>{const m=d.data();return `<div class="u" style="flex-direction:column;align-items:stretch"><span><b>${E(m.name)}</b> <small class="m">${new Date(m.t).toLocaleString('ar-EG')}</small><br>${E(m.text)}</span>${m.reply?`<span class="m" style="color:var(--a)">ردّك: ${E(m.reply)}</span>`:''}<div class="row"><input id="r-${d.id}" placeholder="اكتب الرد"><button onclick="rep('${d.id}')">رد</button><button class="s" onclick="dm('${d.id}')">حذف</button></div></div>`}).join('')||'<p class="m">مفيش رسائل.</p>'}
+async function rep(id){const t=$('#r-'+id).value.trim();if(!t)return;await D.doc('msgs/'+id).update({reply:t,read:true});msg()}
+async function dm(id){await D.doc('msgs/'+id).delete();msg()}
+</script></body></html>

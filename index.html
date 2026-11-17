@@ -30,6 +30,19 @@ nav button.on{color:var(--a);font-weight:900}
 .u{display:flex;justify-content:space-between;align-items:center;background:var(--c);padding:10px 12px;border-radius:12px}
 .u button{width:auto;padding:6px 14px}
 #au{position:absolute;left:12px;top:12px;width:auto;padding:6px 12px;font-size:13px;z-index:2}
+body{background:radial-gradient(900px 500px at 90% -5%,#35479f66,transparent),radial-gradient(700px 400px at 0 105%,#f2b13422,transparent),var(--bg)}
+.card{gap:12px}.card h2{font-size:28px;letter-spacing:-.2px}
+.top{display:flex;justify-content:space-between;align-items:center}.own{color:var(--a);cursor:pointer}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{display:inline-flex;align-items:center;background:#ffffff0d;border:1px solid var(--l);border-radius:99px;padding:3px 11px;font-size:12.5px;color:var(--m)}
+.pill.live{color:#3ddc97;border-color:#3ddc9755}.pill.end{color:#ff8a80;border-color:#ff8a8055}.pill.soon{color:var(--a)}
+.lead-box{background:var(--c);border:1px solid var(--l);border-radius:14px;padding:12px;font-size:15px}
+.v{padding:15px 14px;font-size:17px;border-radius:14px}
+.v i{background:linear-gradient(90deg,#f2b13455,#f2b13422)}
+.v.lead{border-color:var(--a);box-shadow:0 0 0 1px var(--a) inset}
+.v.lead span:first-child::before{content:'👑 '}
+.v:active{transform:scale(.98)}
+nav{border-top:1px solid var(--l);box-shadow:0 -8px 24px #0006}
 </style></head><body>
 <div id="app"><main id="main"></main><nav id="nav" hidden></nav></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -62,7 +75,7 @@ async function google(){try{await A.signInWithPopup(new firebase.auth.GoogleAuth
 
 A.onAuthStateChanged(async u=>{unsubs.forEach(f=>f());unsubs=[];if(!u){me=null;return authUI()}
  let r=await D.doc('users/'+u.uid).get();
- if(!r.exists){await D.doc('users/'+u.uid).set({name:window._nm||u.displayName||'مستخدم',code:rc(),followers:0,votes:0});r=await D.doc('users/'+u.uid).get()}
+ if(!r.exists){await D.doc('users/'+u.uid).set({name:window._nm||u.displayName||'مستخدم',code:rc(),followers:0,votes:0,secs:0});r=await D.doc('users/'+u.uid).get()}
  me={id:u.uid,...r.data()};
  try{isAdmin=(await D.doc('admins/'+u.uid).get()).exists?1:0}catch(e){isAdmin=0}
  unsubs.push(D.collection('polls').orderBy('created','desc').limit(60).onSnapshot(s=>{polls=s.docs.map(d=>({id:d.id,...d.data()}));rank();const k=polls.map(p=>p.id).join();if(tab=='feed'){k==key?patchAll():drawFeed()}key=k}));
@@ -71,10 +84,10 @@ A.onAuthStateChanged(async u=>{unsubs.forEach(f=>f());unsubs=[];if(!u){me=null;r
  unsubs.push(D.doc('users/'+u.uid).onSnapshot(d=>{if(d.exists)me={id:u.uid,...d.data()}}));
  nav();go('feed')});
 
-function nav(){const t=[['feed','🗳 الانتخابات'],['search','🔍 بحث'],['new','➕ جديد'],['me','👤 حسابي']];if(isAdmin)t.push(['adm','⚙ الإدارة']);
+function nav(){const t=[['feed','🗳 الانتخابات'],['search','🔍 بحث'],['msg','✉ رسائل'],['me','👤 حسابي']];
  $('#nav').hidden=false;$('#nav').innerHTML=t.map(x=>`<button id="t-${x[0]}" onclick="go('${x[0]}')">${x[1]}</button>`).join('')}
 function go(t){tab=t;clearInterval(auto);auto=null;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id=='t-'+t));
- ({feed:drawFeed,search:drawSearch,new:drawNew,me:drawMe,adm:drawAdm})[t]()}
+ ({feed:drawFeed,search:drawSearch,msg:drawMsg,me:drawMe,adm:drawAdm})[t]()}
 
 // ---------- ترتيب: المتابعين يرفعون ظهور الانتخاب ----------
 function rank(){const now=Date.now(),sc=p=>Math.log(1+(p.ownerFollowers||0))*3-(now-p.created)/36e5/6+(now<p.end?4:0);
@@ -82,16 +95,17 @@ function rank(){const now=Date.now(),sc=p=>Math.log(1+(p.ownerFollowers||0))*3-(
 
 // ---------- الفيد ----------
 const media=o=>{const u=U(o.url);return !u?'':o.t=='video'?`<video src="${u}" controls playsinline></video>`:o.t=='audio'?`<audio src="${u}" controls></audio>`:`<img src="${u}" loading="lazy" alt="">`};
-const card=p=>`<section class="card" id="c-${p.id}"><div class="m"><b onclick="openUser('${p.owner}')">@${E(p.ownerName)}</b> • كود الانتخاب ${p.code} • <span id="t-${p.id}"></span></div><h2>${E(p.title)}</h2>`+
+const fd=ms=>{const m=Math.round(ms/6e4);return m<60?m+' دقيقة':m<1440?(m%60?Math.floor(m/60)+' ساعة و'+m%60+' دقيقة':m/60+' ساعة'):m%1440?Math.floor(m/1440)+' يوم و'+Math.round(m%1440/60)+' ساعة':m/1440+' يوم'};
+const card=p=>`<section class="card" id="c-${p.id}"><div class="top"><b class="own" onclick="openUser('${p.owner}')">@${E(p.ownerName)}</b><span class="pill" id="s-${p.id}"></span></div><h2>${E(p.title)}</h2><div class="pills"><span class="pill">⏱ المدة ${fd(p.end-p.start)}</span><span class="pill" id="t-${p.id}"></span><span class="pill">🔎 ${p.code}</span></div><div class="lead-box" id="l-${p.id}"></div>`+
  p.o.map((o,i)=>`<div class="o">${media(o)}<button class="v ${mine[p.id]==i?'my':''}" onclick="vote('${p.id}',${i})"><i id="b-${p.id}-${i}"></i><span>${E(o.x||'خيار '+(i+1))}${mine[p.id]==i?' ✓':''}</span><span id="p-${p.id}-${i}"></span></button></div>`).join('')+
  `<div class="m" id="n-${p.id}"></div><button class="s" onclick="share('${p.id}')">📷 صورة النتيجة</button></section>`;
 function drawFeed(){const m=$('#main'),old=$('#feed')?.scrollTop||0;
- m.innerHTML=`<button id="au" class="s" onclick="toggleAuto()">${auto?'⏸ تلقائي':'▶ كل 15 ثانية'}</button><div id="feed">`+(polls.length?polls.map(card).join(''):'<div class="p"><p class="m">لسه مفيش انتخابات. اعمل أول واحد من تبويب "جديد".</p></div>')+'</div>';
+ m.innerHTML=`<button id="au" class="s" onclick="toggleAuto()">${auto?'⏸ تلقائي':'▶ كل 15 ثانية'}</button><div id="feed">`+(polls.length?polls.map(card).join(''):'<div class="p"><p class="m">لسه مفيش انتخابات. أول ما الإدارة تنزّل انتخاب هيظهر هنا.</p></div>')+'</div>';
  $('#feed').scrollTop=old;patchAll()}
-function patchAll(){const now=Date.now();polls.forEach(p=>{const show=now>=p.end||mine[p.id]!=null,n=p.n||0;
+function patchAll_old(){const now=Date.now();polls.forEach(p=>{const show=now>=p.end||mine[p.id]!=null,n=p.n||0;
  p.o.forEach((o,i)=>{const v=(p.v||{})[i]||0,pc=n?Math.round(v/n*100):0,b=$('#b-'+p.id+'-'+i),x=$('#p-'+p.id+'-'+i);if(b){b.style.width=show?pc+'%':'0';x.textContent=show?pc+'% ('+v+')':''}});
  const nn=$('#n-'+p.id);if(nn)nn.textContent=show?'إجمالي الأصوات: '+n:'صوّت عشان تشوف النتيجة'});tick()}
-function tick(){const now=Date.now();polls.forEach(p=>{const e=$('#t-'+p.id);if(!e)return;const r=p.end-now;
+function tick_old(){const now=Date.now();polls.forEach(p=>{const e=$('#t-'+p.id);if(!e)return;const r=p.end-now;
  e.textContent=r<=0?'انتهى':'باقي '+(r>864e5?Math.floor(r/864e5)+' يوم':r>36e5?Math.floor(r/36e5)+' ساعة':Math.floor(r/6e4)+':'+String(Math.floor(r/1e3)%60).padStart(2,'0'))})}
 setInterval(()=>{if(tab=='feed')tick()},1000);
 function toggleAuto(){if(auto){clearInterval(auto);auto=null}else auto=setInterval(()=>{const f=$('#feed');if(!f)return;f.scrollTo({top:f.scrollTop+f.clientHeight>=f.scrollHeight-5?0:f.scrollTop+f.clientHeight,behavior:'smooth'})},15000);$('#au').textContent=auto?'⏸ تلقائي':'▶ كل 15 ثانية'}
@@ -140,4 +154,17 @@ async function drawAdm(){const m=$('#main');m.innerHTML='<div class="p"><p class
  window._us=us;lst()}
 function lst(){const k=+$('#lm').value;$('#ul').innerHTML=_us.slice(0,k).map((u,i)=>`<div class="u"><span>${i+1}. ${E(u.name)}</span><b>${u.votes||0} تفاعل</b></div>`).join('')}
 async function del(id){if(confirm('حذف الانتخاب؟')){await D.doc('polls/'+id).delete();drawAdm()}}
+function patchAll(){const now=Date.now();polls.forEach(p=>{const n=p.n||0,vs=p.o.map((_,i)=>(p.v||{})[i]||0),mx=Math.max(...vs),w=vs.filter(x=>x==mx).length,ended=now>=p.end;
+ p.o.forEach((o,i)=>{const pc=n?Math.round(vs[i]/n*100):0,b=$('#b-'+p.id+'-'+i),x=$('#p-'+p.id+'-'+i);if(!b)return;b.style.width=pc+'%';x.textContent=pc+'% • '+vs[i]+' صوت';b.parentElement.classList.toggle('lead',n>0&&vs[i]==mx&&w==1)});
+ const l=$('#l-'+p.id);if(l){const top=vs.indexOf(mx),sec=[...vs].sort((a,b)=>b-a)[1];l.innerHTML=!n?'<span class="m">لسه مفيش أصوات، كن أول من يصوّت</span>':w>1?'<b>تعادل</b> بين '+w+' خيارات':(ended?'🏆 الفائز':'👑 المتصدر')+': <b>'+E(p.o[top].x||'خيار '+(top+1))+'</b> بفارق '+(mx-sec)+' صوت'}
+ const nn=$('#n-'+p.id);if(nn)nn.textContent='إجمالي الأصوات: '+n});tick()}
+function tick(){const now=Date.now();polls.forEach(p=>{const t=$('#t-'+p.id),s=$('#s-'+p.id);if(!t)return;const r=p.end-now,z=v=>String(v).padStart(2,'0');
+ if(now<p.start){t.textContent='🕒 يبدأ بعد '+fd(p.start-now);s.textContent='قريبًا';s.className='pill soon'}
+ else if(r<=0){t.textContent='🏁 انتهى';s.textContent='انتهى';s.className='pill end'}
+ else{const q=Math.floor(r/1e3),d=Math.floor(q/86400),h=Math.floor(q%86400/3600),m=Math.floor(q%3600/60),x=q%60;t.textContent='⏳ باقي '+(d?d+' يوم و'+h+' ساعة':h?h+':'+z(m)+':'+z(x):m+':'+z(x));s.textContent='● مباشر';s.className='pill live'}})}
+function drawMsg(){$('#main').innerHTML=`<div class="p"><h2>راسل الإدارة</h2><textarea id="mt" rows="4" maxlength="500" placeholder="اكتب رسالتك للإدارة"></textarea><button onclick="sendMsg()">إرسال</button><div id="ml"></div></div>`;loadMsg()}
+async function sendMsg(){const t=$('#mt').value.trim();if(!t)return;try{await D.collection('msgs').add({u:me.id,name:me.name,text:t,t:Date.now(),read:false});$('#mt').value='';loadMsg()}catch(e){alert(e.message)}}
+async function loadMsg(){const s=await D.collection('msgs').where('u','==',me.id).get(),a=s.docs.map(d=>d.data()).sort((x,y)=>y.t-x.t);
+ $('#ml').innerHTML=a.map(m=>`<div class="u" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:8px"><span>${E(m.text)}</span>${m.reply?`<span class="m" style="color:var(--a)">رد الإدارة: ${E(m.reply)}</span>`:'<span class="m">في انتظار الرد</span>'}</div>`).join('')||'<p class="m">لسه ماراسلتش الإدارة.</p>'}
+setInterval(()=>{if(me&&!document.hidden)D.doc('users/'+me.id).update({secs:F.increment(30)}).catch(()=>{})},3e4);
 </script></body></html>
