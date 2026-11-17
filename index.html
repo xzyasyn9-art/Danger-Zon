@@ -46,6 +46,7 @@ nav{border-top:1px solid var(--l);box-shadow:0 -8px 24px #0006}
 .av{width:64px;height:64px;border-radius:50%;object-fit:cover;background:var(--l);display:inline-flex;align-items:center;justify-content:center;font-weight:900;font-size:24px;flex:none}
 .av.s{width:38px;height:38px;font-size:16px}
 .c2{background:#ffffff08;border:1px solid var(--l);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.xg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:300px;margin:8px auto}.xo{aspect-ratio:1;font-size:44px;font-weight:900;padding:0}.xo:disabled{opacity:.9}
 </style></head><body>
 <div id="app"><main id="main"></main><nav id="nav" hidden></nav></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -87,10 +88,10 @@ A.onAuthStateChanged(async u=>{unsubs.forEach(f=>f());unsubs=[];if(!u){me=null;r
  unsubs.push(D.doc('users/'+u.uid).onSnapshot(d=>{if(d.exists)me={id:u.uid,...d.data()}}));
  nav();go('feed')});
 
-function nav(){const t=[['feed','🗳 الانتخابات'],['search','🔍 بحث'],['msg','✉ رسائل'],['me','👤 حسابي']];
+function nav(){const t=[['feed','🗳 الانتخابات'],['search','🔍 بحث'],['tr','🏆 مسابقات'],['msg','✉ رسائل'],['me','👤 حسابي']];
  $('#nav').hidden=false;$('#nav').innerHTML=t.map(x=>`<button id="t-${x[0]}" onclick="go('${x[0]}')">${x[1]}</button>`).join('')}
 function go(t){tab=t;clearInterval(auto);auto=null;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id=='t-'+t));
- ({feed:drawFeed,search:drawSearch,msg:drawMsg,me:drawMe,adm:drawAdm})[t]()}
+ ({feed:drawFeed,search:drawSearch,tr:drawTr,msg:drawMsg,me:drawMe,adm:drawAdm})[t]()}
 
 // ---------- ترتيب: المتابعين يرفعون ظهور الانتخاب ----------
 function rank(){const now=Date.now(),sc=p=>Math.log(1+(p.ownerFollowers||0))*3-(now-p.created)/36e5/6+(now<p.end?4:0);
@@ -200,4 +201,28 @@ function patchAll(){const now=Date.now();polls.forEach(p=>{const V=i=>(p.v||{})[
  p.o.forEach((o,i)=>{const pc=n?Math.round(vs[i]/n*100):0,b=$('#b-'+p.id+'-'+i),x=$('#p-'+p.id+'-'+i);if(!b)return;b.style.width=pc+'%';x.textContent=pc+'% • '+V(i)+' صوت'+(G(i)?' + '+G(i)+' نقطة':'');b.parentElement.classList.toggle('lead',n>0&&vs[i]==mx&&w==1)});
  const l=$('#l-'+p.id);if(l){const top=vs.indexOf(mx),sec=[...vs].sort((a,b)=>b-a)[1];l.innerHTML=!n?'<span class="m">لسه مفيش أصوات، كن أول من يصوّت</span>':w>1?'<b>تعادل</b> بين '+w+' خيارات':(ended?'🏆 الفائز':'👑 المتصدر')+': <b>'+E(p.o[top].x||'خيار '+(top+1))+'</b> بفارق '+(mx-sec)+' نقطة'}
  const nn=$('#n-'+p.id);if(nn)nn.textContent='إجمالي النقاط (أصوات + هدايا): '+n});tick()}
+
+const nm=(m,s)=>m[s]=='BYE'?'—':(m[s+'n']||'؟');
+function bracket(x,ms){if(x.type=='league'){const P={};Object.entries(x.players||{}).forEach(([k,v])=>P[k]={n:v,p:0,w:0,l:0});ms.filter(m=>m.w).forEach(m=>{const lo=m.w==m.a?m.b:m.a;if(P[m.w]){P[m.w].p+=3;P[m.w].w++}if(P[lo])P[lo].l++});
+ const R=Object.entries(P).sort((a,b)=>b[1].p-a[1].p||b[1].w-a[1].w);return `<small class="m">الباقي ${ms.filter(m=>!m.w).length} مباراة</small>`+R.map((r,i)=>`<div class="u"><span>${i+1}. ${E(r[1].n)}</span><b>${r[1].p} نقطة (${r[1].w}-${r[1].l})</b></div>`).join('')}
+ const rs=[...new Set(ms.map(m=>m.r))].sort((a,b)=>a-b),top=rs[rs.length-1],lab=r=>r==top?'النهائي':r==top-1?'نصف النهائي':r==top-2?'ربع النهائي':'الدور '+Math.pow(2,top-r+1);
+ return rs.map(r=>`<b>${lab(r)}</b>`+ms.filter(m=>m.r==r).map(m=>`<div class="u"><span>${E(nm(m,'a'))} × ${E(nm(m,'b'))}</span><b>${m.w?'✓ '+E(m.w==m.a?m.an:m.bn):m.wa+'-'+m.wb}</b></div>`).join('')).join('')}
+function fill(M){M.forEach(m=>{['a','b'].forEach(s=>{const sr=m['s'+s];if(m[s]||!sr)return;const src=M.find(x=>x.id==sr);if(src&&src.w){m[s]=src.w;m[s+'n']=src.w==src.a?src.an:src.bn;D.doc('matches/'+m.id).update({[s]:m[s],[s+'n']:m[s+'n']}).catch(()=>{})}})})}
+
+async function drawTr(){$('#main').innerHTML='<div class="p"><p class="m">جاري التحميل...</p></div>';const[t,m]=await Promise.all([D.collection('tourneys').orderBy('created','desc').get(),D.collection('matches').get()]),T=t.docs.map(d=>({id:d.id,...d.data()})),M=m.docs.map(d=>({id:d.id,...d.data()}));fill(M);
+ $('#main').innerHTML='<div class="p">'+(T.map(x=>{const inn=(x.players||{})[me.id]!=null,ms=M.filter(y=>y.t==x.id),mine=ms.filter(y=>!y.w&&(y.a==me.id||y.b==me.id)&&y.a&&y.b&&y.b!='BYE'),left=ms.filter(y=>!y.w&&(y.a==me.id||y.b==me.id)).length;
+  return `<div class="c2"><b>${E(x.name)} • ${x.type=='cup'?'كأس':'دوري'}</b><small class="m">${Object.keys(x.players||{}).length} لاعب • جوائز 🪙 ${(x.prizes||[]).map(n=>(n||0).toLocaleString('ar-EG')).join(' / ')}</small>`+
+  (x.status=='open'?`<button onclick="tjoin('${x.id}',${inn?0:1})">${inn?'انسحب':'العب في المسابقة'}</button>`:'')+
+  (x.status=='running'&&inn?`<small class="m">باقيلك ${left} مباراة</small>${mine.map(y=>`<button onclick="playM('${y.id}')">⚔ العب ضد ${E(y.a==me.id?y.bn:y.an)}</button>`).join('')}<button class="s" onclick="tquit('${x.id}')">انسحب من المسابقة</button>`:'')+(x.status!='open'?bracket(x,ms):'')+'</div>'}).join('')||'<p class="m">مفيش مسابقات دلوقتي.</p>')+'</div>'}
+async function tjoin(id,on){try{await D.doc('tourneys/'+id).update({['players.'+me.id]:on?me.name:firebase.firestore.FieldValue.delete()});drawTr()}catch(e){alert(e.message)}}
+async function tquit(id){if(!confirm('تنسحب؟ هتخسر كل مبارياتك المتبقية'))return;const s=await D.collection('matches').where('t','==',id).get(),b=D.batch();
+ s.docs.forEach(d=>{const m=d.data();if(m.w||m.b=='BYE'||(m.a!=me.id&&m.b!=me.id))return;const mn=m.a==me.id,opp=mn?m.b:m.a;if(!opp)return;b.update(d.ref,{w:opp,st:'done',[mn?'wb':'wa']:2})});await b.commit();drawTr()}
+let mu=null;const WL=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+function playM(id){if(mu)mu();$('#nav').hidden=true;$('#main').innerHTML='<div class="p" id="gm2"></div>';mu=D.doc('matches/'+id).onSnapshot(d=>drawM({id,...d.data()}))}
+function drawM(m){const my=m.a==me.id?'a':'b',mk=my=='a'?'X':'O',won=m.w;
+ $('#gm2').innerHTML=`<button class="s" onclick="if(mu)mu();mu=null;$('#nav').hidden=false;go('tr')">← رجوع</button><h2>${E(m.an)} (X) × ${E(m.bn)} (O)</h2><div class="u"><span>الجولة ${m.g} • أول واحد يكسب جولتين</span><b>${m.wa} - ${m.wb}</b></div><p class="m">${won?(won==me.id?'🏆 كسبت المباراة':'خسرت المباراة'):m.turn==my?'دورك ('+mk+')':'دور الخصم...'}</p><div class="xg">${[...m.board].map((c,i)=>`<button class="xo" ${(c!='-'||m.turn!=my||won)?'disabled':''} onclick="mv('${m.id}',${i})">${c=='-'?'':c}</button>`).join('')}</div>`}
+async function mv(id,i){const r=D.doc('matches/'+id),m=(await r.get()).data(),my=m.a==me.id?'a':'b',mk=my=='a'?'X':'O';if(m.turn!=my||m.board[i]!='-'||m.w)return;
+ const bd=[...m.board];bd[i]=mk;const win=WL.some(l=>l.every(k=>bd[k]==mk)),full=bd.every(c=>c!='-'),u={board:bd.join(''),turn:my=='a'?'b':'a'};
+ if(win){const k=my=='a'?'wa':'wb',n=m[k]+1;u[k]=n;if(n>=2){u.w=me.id;u.st='done'}else{u.board='---------';u.g=m.g+1;u.turn=(m.g+1)%2?'a':'b'}}else if(full){u.board='---------';u.turn=m.g%2?'a':'b'}
+ try{await r.update(u)}catch(e){alert('تعذر: '+e.message)}}
 </script></body></html>
