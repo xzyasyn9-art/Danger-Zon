@@ -28,9 +28,9 @@ const rc=()=>String(Math.floor(Math.random()*9e10)+1e10),dur={m:6e4,h:36e5,d:864
 const TY={text:'نص فقط',account:'حساب',image:'صورة',gif:'صورة متحركة',video:'فيديو',audio:'تسجيل صوتي'};
 const ft=s=>{s=s||0;const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+' س '+m+' د':m+' د'};
 let me,us=[],pl=[];
-function login(msg){$('#app').innerHTML=`<div class="p" style="min-height:100dvh;justify-content:center"><h1>دخول الإدارة</h1><input id="n" placeholder="اسم الإدارة"><input id="k" type="password" placeholder="الرمز"><button onclick="go()">دخول</button><p class="m" id="er">${msg||''}</p></div>`}
+function login(msg){$('#app').innerHTML=`<div class="p" style="min-height:100dvh;justify-content:center"><h1>دخول الإدارة</h1><input id="n" placeholder="اسم الإدارة"><input id="k" type="password" placeholder="الرمز"><button onclick="go()">دخول</button><button class="s" onclick="setup()">أول مرة؟ أنشئ حساب الإدارة (مرة واحدة فقط)</button><p class="m" id="er">${msg||''}</p></div>`}
 async function go(){try{await A.signInWithEmailAndPassword(em($('#n').value),$('#k').value)}catch(e){$('#er').textContent='الاسم أو الرمز غلط'}}
-A.onAuthStateChanged(async u=>{if(!u)return login();let ok=0;try{ok=(await D.doc('admins/'+u.uid).get()).exists}catch(e){}
+A.onAuthStateChanged(async u=>{if(window._setup)return;if(!u)return login();let ok=0;try{ok=(await D.doc('admins/'+u.uid).get()).exists}catch(e){}
  if(!ok){await A.signOut();return login('هذا الحساب ليس حساب إدارة')}
  me=u;$('#app').innerHTML=`<div class="tabs">${[['sum','الملخص'],['acc','الحسابات'],['new','انتخاب جديد'],['pol','الانتخابات'],['msg','الرسائل']].map(t=>`<button id="t-${t[0]}" onclick="tab('${t[0]}')">${t[1]}</button>`).join('')}<button class="s" onclick="A.signOut()">خروج</button></div><div class="p" id="v"></div>`;tab('sum')});
 async function load(){const[a,b]=await Promise.all([D.collection('users').get(),D.collection('polls').orderBy('created','desc').get()]);us=a.docs.map(d=>({id:d.id,...d.data()}));pl=b.docs.map(d=>({id:d.id,...d.data()}))}
@@ -50,4 +50,8 @@ async function del(id){if(confirm('حذف الانتخاب؟')){await D.doc('pol
 async function msg(){const s=await D.collection('msgs').orderBy('t','desc').limit(100).get();$('#v').innerHTML=s.docs.map(d=>{const m=d.data();return `<div class="u" style="flex-direction:column;align-items:stretch"><span><b>${E(m.name)}</b> <small class="m">${new Date(m.t).toLocaleString('ar-EG')}</small><br>${E(m.text)}</span>${m.reply?`<span class="m" style="color:var(--a)">ردّك: ${E(m.reply)}</span>`:''}<div class="row"><input id="r-${d.id}" placeholder="اكتب الرد"><button onclick="rep('${d.id}')">رد</button><button class="s" onclick="dm('${d.id}')">حذف</button></div></div>`}).join('')||'<p class="m">مفيش رسائل.</p>'}
 async function rep(id){const t=$('#r-'+id).value.trim();if(!t)return;await D.doc('msgs/'+id).update({reply:t,read:true});msg()}
 async function dm(id){await D.doc('msgs/'+id).delete();msg()}
+async function setup(){const n=$('#n').value.trim(),k=$('#k').value;if(!n||k.length<6)return $('#er').textContent='اكتب اسمًا ورمزًا من 6 أحرف على الأقل';
+ window._setup=1;let c;try{c=await A.createUserWithEmailAndPassword(em(n),k)}catch(e){window._setup=0;return $('#er').textContent=e.code=='auth/email-already-in-use'?'الاسم ده مستخدم، اختار اسم تاني':e.message}
+ const u=c.user.uid,b=D.batch();b.set(D.doc('users/'+u),{name:n,code:rc(),followers:0,votes:0,secs:0});b.set(D.doc('admins/'+u),{ok:true});b.set(D.doc('config/locked'),{by:u});
+ try{await b.commit();window._setup=0;location.reload()}catch(e){try{await c.user.delete()}catch(x){}window._setup=0;login('تم إنشاء حساب إدارة قبل كده، أو تعذر الإنشاء: '+e.message)}}
 </script></body></html>

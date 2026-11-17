@@ -43,6 +43,9 @@ body{background:radial-gradient(900px 500px at 90% -5%,#35479f66,transparent),ra
 .v.lead span:first-child::before{content:'👑 '}
 .v:active{transform:scale(.98)}
 nav{border-top:1px solid var(--l);box-shadow:0 -8px 24px #0006}
+.av{width:64px;height:64px;border-radius:50%;object-fit:cover;background:var(--l);display:inline-flex;align-items:center;justify-content:center;font-weight:900;font-size:24px;flex:none}
+.av.s{width:38px;height:38px;font-size:16px}
+.c2{background:#ffffff08;border:1px solid var(--l);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:6px}
 </style></head><body>
 <div id="app"><main id="main"></main><nav id="nav" hidden></nav></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -110,7 +113,7 @@ function tick_old(){const now=Date.now();polls.forEach(p=>{const e=$('#t-'+p.id)
 setInterval(()=>{if(tab=='feed')tick()},1000);
 function toggleAuto(){if(auto){clearInterval(auto);auto=null}else auto=setInterval(()=>{const f=$('#feed');if(!f)return;f.scrollTo({top:f.scrollTop+f.clientHeight>=f.scrollHeight-5?0:f.scrollTop+f.clientHeight,behavior:'smooth'})},15000);$('#au').textContent=auto?'⏸ تلقائي':'▶ كل 15 ثانية'}
 async function vote(id,i){const p=polls.find(x=>x.id==id);if(mine[id]!=null||Date.now()>=p.end||Date.now()<p.start)return;
- try{const b=D.batch();b.set(D.doc('votes/'+id+'_'+me.id),{p:id,u:me.id,c:i});b.update(D.doc('polls/'+id),{['v.'+i]:F.increment(1),n:F.increment(1)});b.update(D.doc('users/'+me.id),{votes:F.increment(1)});await b.commit()}catch(e){alert('تعذر التصويت: '+e.message)}}
+ try{const b=D.batch();b.set(D.doc('votes/'+id+'_'+me.id),{p:id,u:me.id,c:i,t:Date.now()});b.update(D.doc('polls/'+id),{['v.'+i]:F.increment(1),n:F.increment(1)});b.update(D.doc('users/'+me.id),{votes:F.increment(1)});await b.commit()}catch(e){alert('تعذر التصويت: '+e.message)}}
 function share(id){const p=polls.find(x=>x.id==id),c=document.createElement('canvas');c.width=1080;c.height=300+p.o.length*130;const g=c.getContext('2d');
  g.fillStyle='#111936';g.fillRect(0,0,1080,c.height);g.textAlign='center';g.fillStyle='#f4f1e8';g.font='bold 54px Cairo,sans-serif';g.fillText(p.title.slice(0,36),540,110);
  g.font='32px Cairo,sans-serif';g.fillStyle='#9aa5d1';g.fillText('كود الانتخاب '+p.code,540,170);
@@ -124,11 +127,11 @@ async function search(){const q=$('#q').value.trim(),r=$('#res');r.innerHTML='..
  let h='';a.docs.forEach(d=>{h+=userRow(d.id,d.data())});
  b.docs.forEach(d=>{const p={id:d.id,...d.data()};if(!polls.find(x=>x.id==p.id))polls.push(p);h+=card(p)});
  r.innerHTML=h||'<p class="m">مفيش نتيجة للكود ده.</p>';patchAll()}
-const userRow=(id,u)=>`<div class="u"><span><b>${E(u.name)}</b><br><small class="m">${u.followers||0} متابع • كود ${u.code}</small></span>${id==me.id?'':`<button onclick="fol('${id}',this)">${follows.has(id)?'إلغاء المتابعة':'متابعة'}</button>`}</div>`;
+const userRow_old=(id,u)=>`<div class="u"><span><b>${E(u.name)}</b><br><small class="m">${u.followers||0} متابع • كود ${u.code}</small></span>${id==me.id?'':`<button onclick="fol('${id}',this)">${follows.has(id)?'إلغاء المتابعة':'متابعة'}</button>`}</div>`;
 async function fol(id,btn){const b=D.batch(),r=D.doc('follows/'+me.id+'_'+id),on=follows.has(id);
  on?b.delete(r):b.set(r,{a:me.id,b:id});b.update(D.doc('users/'+id),{followers:F.increment(on?-1:1)});
  try{await b.commit();on?follows.delete(id):follows.add(id);btn.textContent=on?'متابعة':'إلغاء المتابعة'}catch(e){alert(e.message)}}
-async function openUser(id){tab='search';go('search');const d=await D.doc('users/'+id).get(),s=await D.collection('polls').where('owner','==',id).get();
+async function openUser_old(id){tab='search';go('search');const d=await D.doc('users/'+id).get(),s=await D.collection('polls').where('owner','==',id).get();
  s.docs.forEach(x=>{if(!polls.find(p=>p.id==x.id))polls.push({id:x.id,...x.data()})});
  $('#res').innerHTML=userRow(id,d.data())+s.docs.map(x=>card({id:x.id,...x.data()})).join('');patchAll()}
 
@@ -143,7 +146,7 @@ async function publish(){const o=[...document.querySelectorAll('#ops .o')].map(d
  try{await D.collection('polls').add({title:t,o,v,n:0,start:s,end:e,created:Date.now(),code:rc(),owner:me.id,ownerName:me.name,ownerFollowers:me.followers||0});go('feed')}catch(x){$('#er').textContent=x.message}}
 
 // ---------- حسابي ----------
-function drawMe(){$('#main').innerHTML=`<div class="p"><h2>${E(me.name)}</h2><div class="u"><span>كود صفحتك (شاركه مع أصحابك)</span><b style="font-size:20px;color:var(--a)">${me.code}</b></div>
+function drawMe_old(){$('#main').innerHTML=`<div class="p"><h2>${E(me.name)}</h2><div class="u"><span>كود صفحتك (شاركه مع أصحابك)</span><b style="font-size:20px;color:var(--a)">${me.code}</b></div>
 <div class="u"><span>المتابعين</span><b>${me.followers||0}</b></div><div class="u"><span>أصواتك</span><b>${me.votes||0}</b></div><button class="s" onclick="A.signOut()">تسجيل الخروج</button></div>`}
 
 // ---------- الإدارة ----------
@@ -167,4 +170,19 @@ async function sendMsg(){const t=$('#mt').value.trim();if(!t)return;try{await D.
 async function loadMsg(){const s=await D.collection('msgs').where('u','==',me.id).get(),a=s.docs.map(d=>d.data()).sort((x,y)=>y.t-x.t);
  $('#ml').innerHTML=a.map(m=>`<div class="u" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:8px"><span>${E(m.text)}</span>${m.reply?`<span class="m" style="color:var(--a)">رد الإدارة: ${E(m.reply)}</span>`:'<span class="m">في انتظار الرد</span>'}</div>`).join('')||'<p class="m">لسه ماراسلتش الإدارة.</p>'}
 setInterval(()=>{if(me&&!document.hidden)D.doc('users/'+me.id).update({secs:F.increment(30)}).catch(()=>{})},3e4);
+
+const av=(u,s)=>u.photo&&u.photo.startsWith('data:image/')?`<img class="av ${s?'s':''}" src="${u.photo}" alt="">`:`<span class="av ${s?'s':''}">${E((u.name||'?')[0])}</span>`;
+const userRow=(id,u)=>`<div class="u"><span onclick="openUser('${id}')" style="cursor:pointer;display:flex;gap:10px;align-items:center">${av(u,1)}<span><b>${E(u.name)}</b><br><small class="m">${u.followers||0} متابع • كود ${u.code}</small></span></span>${id==me.id?'':`<button onclick="fol('${id}',this)">${follows.has(id)?'إلغاء المتابعة':'متابعة'}</button>`}</div>`;
+async function votesOf(id,n){const s=await D.collection('votes').where('u','==',id).limit(40).get(),v=s.docs.map(d=>d.data()).sort((a,b)=>(b.t||0)-(a.t||0)).slice(0,n),ps=await Promise.all(v.map(x=>D.doc('polls/'+x.p).get()));
+ return v.map((x,i)=>{if(!ps[i].exists)return'';const p=ps[i].data(),o=p.o[x.c]||{};return `<div class="u"><span>${E(p.title)}</span><b style="color:var(--a)">${E(o.x||'خيار '+(+x.c+1))}</b></div>`}).join('')||'<p class="m">لسه ما صوّتش على حاجة.</p>'}
+async function drawMe(){$('#main').innerHTML=`<div class="p"><div style="display:flex;gap:12px;align-items:center">${av(me)}<div><h2>${E(me.name)}</h2><small class="m">${me.followers||0} متابع • بتتابع ${follows.size}</small></div></div>
+<label class="m">غيّر صورة الحساب</label><input type="file" accept="image/*" onchange="setPhoto(this)">
+<div class="u"><span>كود صفحتك (شاركه مع أصحابك)</span><b style="font-size:20px;color:var(--a)">${me.code}</b></div>
+<h3>صوّتّ على</h3><div id="mv" class="p" style="padding:0"><p class="m">...</p></div><h3>اللي بتتابعهم</h3><div id="mf" class="p" style="padding:0"><p class="m">...</p></div><button class="s" onclick="A.signOut()">تسجيل الخروج</button></div>`;
+ $('#mv').innerHTML=await votesOf(me.id,15);
+ const ids=[...follows].slice(0,8),ds=await Promise.all(ids.map(i=>D.doc('users/'+i).get()));let h='';
+ for(const d of ds){if(!d.exists)continue;h+=`<div class="c2"><div class="u" onclick="openUser('${d.id}')" style="cursor:pointer"><span style="display:flex;gap:10px;align-items:center">${av(d.data(),1)}<b>${E(d.data().name)}</b></span></div>`+await votesOf(d.id,3)+'</div>'}
+ if($('#mf'))$('#mf').innerHTML=h||'<p class="m">لسه مابتتابعش حد. دوّر بالكود وتابع أصحابك.</p>'}
+function setPhoto(i){const f=i.files[0];if(!f)return;const im=new Image();im.onload=()=>{const c=document.createElement('canvas'),r=Math.min(im.width,im.height);c.width=c.height=160;c.getContext('2d').drawImage(im,(im.width-r)/2,(im.height-r)/2,r,r,0,0,160,160);D.doc('users/'+me.id).update({photo:c.toDataURL('image/jpeg',.7)}).then(()=>setTimeout(drawMe,700)).catch(e=>alert('تعذر حفظ الصورة: '+e.message))};im.src=URL.createObjectURL(f)}
+async function openUser(id){tab='search';go('search');const d=await D.doc('users/'+id).get();if(!d.exists)return;$('#res').innerHTML=userRow(id,d.data())+'<h3 style="margin-top:10px">صوّت على</h3>'+await votesOf(id,20)}
 </script></body></html>
