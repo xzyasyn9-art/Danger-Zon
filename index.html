@@ -39,7 +39,7 @@ nav button.on{color:var(--a);font-weight:900}
 // ===== 1) الصق إعدادات Firebase هنا =====
 const CFG={apiKey:"",authDomain:"",projectId:"",appId:""};
 // =========================================
-authUI();firebase.initializeApp(CFG);
+firebase.initializeApp(CFG);
 const A=firebase.auth(),D=firebase.firestore(),F=firebase.firestore.FieldValue,$=s=>document.querySelector(s);
 const E=s=>(s+'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
 const U=u=>/^https?:\/\//.test(u||'')?E(u):'';
