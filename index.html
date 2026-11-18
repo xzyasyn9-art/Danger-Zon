@@ -79,7 +79,7 @@ async function google(){try{await A.signInWithPopup(new firebase.auth.GoogleAuth
 
 A.onAuthStateChanged(async u=>{unsubs.forEach(f=>f());unsubs=[];if(!u){me=null;return authUI()}
  let r=await D.doc('users/'+u.uid).get();
- if(!r.exists){await D.doc('users/'+u.uid).set({name:window._nm||u.displayName||'مستخدم',code:rc(),followers:0,votes:0,secs:0,coins:0});r=await D.doc('users/'+u.uid).get()}
+ if(!r.exists){if((await D.doc('deleted/'+u.uid).get()).exists){alert('تم حذف هذا الحساب نهائيًا');return A.signOut()}await D.doc('users/'+u.uid).set({name:window._nm||u.displayName||'مستخدم',code:rc(),followers:0,votes:0,secs:0,coins:0});r=await D.doc('users/'+u.uid).get()}
  me={id:u.uid,...r.data()};if(me.banned){alert('تم إيقاف حسابك من الإدارة');return A.signOut()}if(me.warn&&localStorage.getItem('w')!=me.warn){alert('⚠ تحذير من الإدارة:\n'+me.warn);try{localStorage.setItem('w',me.warn)}catch(e){}}
  try{isAdmin=(await D.doc('admins/'+u.uid).get()).exists?1:0}catch(e){isAdmin=0}
  unsubs.push(D.collection('polls').orderBy('created','desc').limit(60).onSnapshot(s=>{polls=s.docs.map(d=>({id:d.id,...d.data()}));rank();const k=polls.map(p=>p.id).join();if(tab=='feed'){k==key?patchAll():drawFeed()}key=k}));
@@ -98,7 +98,7 @@ function rank(){const now=Date.now(),sc=p=>Math.log(1+(p.ownerFollowers||0))*3-(
  polls=polls.filter(p=>Date.now()>=p.start||p.owner==me.id).sort((a,b)=>sc(b)-sc(a))}
 
 // ---------- الفيد ----------
-const media=o=>{const u=U(o.url);return !u?'':o.t=='video'?`<video src="${u}" controls playsinline></video>`:o.t=='audio'?`<audio src="${u}" controls></audio>`:`<img src="${u}" loading="lazy" alt="">`};
+const media=o=>{const u=U(o.url);return !u?(o.photo&&o.photo.startsWith('data:image/')?'<img src="'+o.photo+'" alt="">':''):o.t=='video'?`<video src="${u}" controls playsinline></video>`:o.t=='audio'?`<audio src="${u}" controls></audio>`:`<img src="${u}" loading="lazy" alt="">`};
 const fd=ms=>{const m=Math.round(ms/6e4);return m<60?m+' دقيقة':m<1440?(m%60?Math.floor(m/60)+' ساعة و'+m%60+' دقيقة':m/60+' ساعة'):m%1440?Math.floor(m/1440)+' يوم و'+Math.round(m%1440/60)+' ساعة':m/1440+' يوم'};
 const card=p=>`<section class="card" id="c-${p.id}"><div class="top"><b class="own" onclick="openUser('${p.owner}')">@${E(p.ownerName)}</b><span class="pill" id="s-${p.id}"></span></div><h2>${E(p.title)}</h2><div class="pills"><span class="pill">⏱ المدة ${fd(p.end-p.start)}</span><span class="pill" id="t-${p.id}"></span><span class="pill">🔎 ${p.code}</span></div><div class="lead-box" id="l-${p.id}"></div>`+
  p.o.map((o,i)=>`<div class="o">${media(o)}<button class="v ${mine[p.id]==i?'my':''}" onclick="vote('${p.id}',${i})"><i id="b-${p.id}-${i}"></i><span>${E(o.x||'خيار '+(i+1))}${mine[p.id]==i?' ✓':''}</span><span id="p-${p.id}-${i}"></span></button>${gr(p,o,i)}</div>`).join('')+
@@ -203,7 +203,7 @@ function patchAll(){const now=Date.now();polls.forEach(p=>{const V=i=>(p.v||{})[
  const nn=$('#n-'+p.id);if(nn)nn.textContent='إجمالي النقاط (أصوات + هدايا): '+n});tick()}
 
 const nm=(m,s)=>m[s]=='BYE'?'—':(m[s+'n']||'؟');
-function bracket(x,ms){if(x.type=='league'){const P={};Object.entries(x.players||{}).forEach(([k,v])=>P[k]={n:v,p:0,w:0,l:0});ms.filter(m=>m.w).forEach(m=>{const lo=m.w==m.a?m.b:m.a;if(P[m.w]){P[m.w].p+=3;P[m.w].w++}if(P[lo])P[lo].l++});
+function bracket(x,ms){if(x.type=='league'){const P={};Object.entries(x.players||{}).forEach(([k,v])=>P[k]={n:v,p:0,w:0,l:0});ms.filter(m=>m.w).forEach(m=>{if(m.w=='tie'){if(P[m.a])P[m.a].p++;if(P[m.b])P[m.b].p++;return}const lo=m.w==m.a?m.b:m.a;if(P[m.w]){P[m.w].p+=3;P[m.w].w++}if(P[lo])P[lo].l++});
  const R=Object.entries(P).sort((a,b)=>b[1].p-a[1].p||b[1].w-a[1].w);return `<small class="m">الباقي ${ms.filter(m=>!m.w).length} مباراة</small>`+R.map((r,i)=>`<div class="u"><span>${i+1}. ${E(r[1].n)}</span><b>${r[1].p} نقطة (${r[1].w}-${r[1].l})</b></div>`).join('')}
  const rs=[...new Set(ms.map(m=>m.r))].sort((a,b)=>a-b),top=rs[rs.length-1],lab=r=>r==top?'النهائي':r==top-1?'نصف النهائي':r==top-2?'ربع النهائي':'الدور '+Math.pow(2,top-r+1);
  return rs.map(r=>`<b>${lab(r)}</b>`+ms.filter(m=>m.r==r).map(m=>`<div class="u"><span>${E(nm(m,'a'))} × ${E(nm(m,'b'))}</span><b>${m.w?'✓ '+E(m.w==m.a?m.an:m.bn):m.wa+'-'+m.wb}</b></div>`).join('')).join('')}
@@ -225,4 +225,29 @@ async function mv(id,i){const r=D.doc('matches/'+id),m=(await r.get()).data(),my
  const bd=[...m.board];bd[i]=mk;const win=WL.some(l=>l.every(k=>bd[k]==mk)),full=bd.every(c=>c!='-'),u={board:bd.join(''),turn:my=='a'?'b':'a'};
  if(win){const k=my=='a'?'wa':'wb',n=m[k]+1;u[k]=n;if(n>=2){u.w=me.id;u.st='done'}else{u.board='---------';u.g=m.g+1;u.turn=(m.g+1)%2?'a':'b'}}else if(full){u.board='---------';u.turn=m.g%2?'a':'b'}
  try{await r.update(u)}catch(e){alert('تعذر: '+e.message)}}
+
+function preview(x){const k=Object.keys(x.players||{}).length,names=Object.values(x.players||{}).map(E).join('، ')||'—';let h=`<small class="m">المسجلين ${k}/${x.max||(x.type=='cup'?16:20)}: ${names}</small>`;
+ if(x.type=='cup'){let n=2;while(n<Math.max(k,2))n*=2;h='<small class="m">خريطة الكأس (بتتحدد أسماؤها لما المسابقة تبدأ)</small>'+(()=>{let o='';for(let m=n;m>=2;m/=2)o+=`<div class="u"><span>${m==2?'النهائي':m==4?'نصف النهائي':m==8?'ربع النهائي':'الدور '+m}</span><b>${m/2} مباراة</b></div>`;return o})()+h}return h}
+
+let cm=null,mt=null,mw=[];
+async function drawTr(){$('#main').innerHTML='<div class="p"><p class="m">جاري التحميل...</p></div>';const[t,m]=await Promise.all([D.collection('tourneys').orderBy('created','desc').get(),D.collection('matches').get()]),T=t.docs.map(d=>({id:d.id,...d.data()})),M=m.docs.map(d=>({id:d.id,...d.data()}));fill(M);
+ const done=T.filter(x=>x.status=='done'),act=T.filter(x=>x.status!='done');
+ $('#main').innerHTML='<div class="p"><h3>🏆 غرفة الكؤوس</h3>'+(done.map(x=>`<div class="u"><span>🏆 ${x.type=='cup'?'كأس':'دوري'} ${E(x.name)} ${x.year||''}</span><b style="color:var(--a)">${E(x.wn||'')}</b></div>`).join('')||'<p class="m">لسه مفيش بطل.</p>')+'<h3>المسابقات</h3>'+(act.map(x=>{const inn=(x.players||{})[me.id]!=null,ms=M.filter(y=>y.t==x.id),mine=ms.filter(y=>!y.w&&y.st!='swap'&&(y.a==me.id||y.b==me.id)&&y.a&&y.b&&y.b!='BYE'),left=ms.filter(y=>!y.w&&(y.a==me.id||y.b==me.id)).length,full=Object.keys(x.players||{}).length>=(x.max||(x.type=='cup'?16:20));
+  return `<div class="c2"><b>${E(x.name)} • ${x.type=='cup'?'كأس':'دوري'}</b><small class="m">جوائز 🪙 ${(x.prizes||[]).map(n=>(n||0).toLocaleString('ar-EG')).join(' / ')}</small>`+
+  (x.status=='open'?`<button ${full&&!inn?'disabled':''} onclick="tjoin('${x.id}',${inn?0:1})">${inn?'انسحب':full?'المسابقة مكتملة':'العب في المسابقة'}</button>${preview(x)}`:'')+
+  (x.status=='running'&&inn?`<small class="m">باقيلك ${left} مباراة</small>${mine.map(y=>`<button onclick="playM('${y.id}')">⚔ العب ضد ${E(y.a==me.id?y.bn:y.an)}</button>`).join('')}<button class="s" onclick="tquit('${x.id}')">انسحب من المسابقة</button>`:'')+(x.status=='running'?bracket(x,ms):'')+'</div>'}).join('')||'<p class="m">مفيش مسابقات دلوقتي.</p>')+'</div>'}
+function playM(id){if(mu)mu();clearInterval(mt);$('#nav').hidden=true;$('#main').innerHTML='<div class="p" id="gm2"></div>';mu=D.doc('matches/'+id).onSnapshot(d=>{cm={id,...d.data()};drawM(cm)});
+ const ping=()=>{if(cm)D.doc('matches/'+id).update({[cm.a==me.id?'pa':'pb']:Date.now()}).catch(()=>{})};mt=setInterval(ping,15000);setTimeout(ping,1200)}
+function leaveM(){if(mu)mu();mu=null;clearInterval(mt);cm=null;$('#nav').hidden=false;go('tr')}
+function drawM(m){const my=m.a==me.id?'a':'b',mk=my=='a'?'X':'O',won=m.w,sw=m.st=='swap';
+ $('#gm2').innerHTML=`<button class="s" onclick="leaveM()">← رجوع</button><h2>${E(m.an)} (X) × ${E(m.bn)} (O)</h2><div class="u"><span>الجولة ${m.g} • أول واحد يكسب جولتين</span><b>${m.wa} - ${m.wb}</b></div><p class="m">${sw?'اتعادلتوا 10 مرات. الإدارة هتغيّر خصمك.':won?(won==me.id?'🏆 كسبت المباراة':won=='tie'?'تعادل':'خسرت المباراة'):m.turn==my?'دورك ('+mk+')':'دور الخصم...'}</p><div class="xg">${[...m.board].map((c,i)=>`<button class="xo" ${(c!='-'||m.turn!=my||won||sw)?'disabled':''} onclick="mv('${m.id}',${i})">${c=='-'?'':c}</button>`).join('')}</div>`}
+async function mv(id,i){const r=D.doc('matches/'+id),m=(await r.get()).data(),my=m.a==me.id?'a':'b',mk=my=='a'?'X':'O';if(m.turn!=my||m.board[i]!='-'||m.w||m.st=='swap')return;
+ const bd=[...m.board];bd[i]=mk;const win=WL.some(l=>l.every(k=>bd[k]==mk)),full=bd.every(c=>c!='-'),u={board:bd.join(''),turn:my=='a'?'b':'a'};
+ if(win){const k=my=='a'?'wa':'wb',n=m[k]+1;u[k]=n;u.dr=0;if(n>=2){u.w=me.id;u.st='done'}else{u.board='---------';u.g=m.g+1;u.turn=(m.g+1)%2?'a':'b'}}
+ else if(full){u.board='---------';u.turn=m.g%2?'a':'b';u.dr=(m.dr||0)+1;if(u.dr>=10)u.st='swap'}
+ try{await r.update(u)}catch(e){alert('تعذر: '+e.message)}}
+function watchMatches(){mw.forEach(f=>f());mw=[];if(!me)return;['a','b'].forEach(s=>mw.push(D.collection('matches').where(s,'==',me.id).onSnapshot(q=>{q.docs.forEach(d=>{const m={id:d.id,...d.data()},o=s=='a'?m.pb:m.pa;if(!m.w&&m.st!='swap'&&m.a&&m.b&&o&&Date.now()-o<45000&&(!cm||cm.id!=m.id))banner(m)})})))}
+function banner(m){let b=$('#mb');if(!b){b=document.createElement('div');b.id='mb';b.style.cssText='position:fixed;top:8px;left:8px;right:8px;z-index:8;background:var(--a);color:#111936;border-radius:12px;padding:10px;font-weight:900;display:flex;justify-content:space-between;align-items:center;gap:8px';document.body.append(b)}
+ b.innerHTML=`<span>⚔ خصمك جاهز للعب</span><button style="width:auto;background:#111936;color:var(--t)" onclick="$('#mb').remove();playM('${m.id}')">ادخل المباراة</button>`;setTimeout(()=>{const z=$('#mb');if(z)z.remove()},20000)}
+A.onAuthStateChanged(u=>{if(u)setTimeout(watchMatches,2000)});
 </script></body></html>
