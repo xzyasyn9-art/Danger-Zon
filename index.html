@@ -49,6 +49,8 @@ nav{border-top:1px solid var(--l);box-shadow:0 -8px 24px #0006}
 .xg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:300px;margin:8px auto}.xo{aspect-ratio:1;font-size:44px;font-weight:900;padding:0}.xo:disabled{opacity:.9}
 button:not(.s):not(.v):not(.xo){background:linear-gradient(135deg,#f2b134,#ffd479);box-shadow:0 4px 14px #f2b13433}
 nav{border-radius:22px 22px 0 0;background:#161f44}.c2,.u,.lead-box{backdrop-filter:blur(6px)}
+.wc{border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:8px;border:1px solid #ffffff22;background:radial-gradient(circle,#fff7 0 1.5px,transparent 2px) 0 0/20px 20px,linear-gradient(#070d24 0,#16276b 34%,#0e6a39 34%,#18a05a 100%)}
+.wc .wt{color:#ffd479;text-shadow:0 2px 6px #000;letter-spacing:.5px}.mt{display:flex;justify-content:space-between;gap:6px;background:#000a;border:1px solid #ffffff30;border-radius:12px;padding:8px 10px;font-size:14px}.mt .w{color:#ffd479;font-weight:900}.mt .x{opacity:.5;text-decoration:line-through}
 </style></head><body>
 <div id="app"><main id="main"></main><nav id="nav" hidden></nav></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -208,7 +210,7 @@ const nm=(m,s)=>m[s]=='BYE'?'—':(m[s+'n']||'؟');
 function bracket(x,ms){if(x.type=='league'){const P={};Object.entries(x.players||{}).forEach(([k,v])=>P[k]={n:v,p:0,w:0,l:0});ms.filter(m=>m.w).forEach(m=>{if(m.w=='tie'){if(P[m.a])P[m.a].p++;if(P[m.b])P[m.b].p++;return}const lo=m.w==m.a?m.b:m.a;if(P[m.w]){P[m.w].p+=3;P[m.w].w++}if(P[lo])P[lo].l++});
  const R=Object.entries(P).sort((a,b)=>b[1].p-a[1].p||b[1].w-a[1].w);return `<small class="m">الباقي ${ms.filter(m=>!m.w).length} مباراة</small>`+R.map((r,i)=>`<div class="u"><span>${i+1}. ${E(r[1].n)}</span><b>${r[1].p} نقطة (${r[1].w}-${r[1].l})</b></div>`).join('')}
  const rs=[...new Set(ms.map(m=>m.r))].sort((a,b)=>a-b),top=rs[rs.length-1],lab=r=>r==top?'النهائي':r==top-1?'نصف النهائي':r==top-2?'ربع النهائي':'الدور '+Math.pow(2,top-r+1);
- return rs.map(r=>`<b>${lab(r)}</b>`+ms.filter(m=>m.r==r).map(m=>`<div class="u"><span>${E(nm(m,'a'))} × ${E(nm(m,'b'))}</span><b>${m.w?'✓ '+E(m.w==m.a?m.an:m.bn):m.wa+'-'+m.wb}</b></div>`).join('')).join('')}
+ return '<div class="wc">'+rs.map(r=>`<b class="wt">${lab(r)}</b>`+ms.filter(m=>m.r==r).map(m=>{const sd=s=>`<span class="${m.w?(m.w==m[s]?'w':'x'):''}">${m.w&&m.w==m[s]?'✅ ':m.w?'❌ ':''}${E(nm(m,s))}</span>`;return `<div class="mt">${sd('a')}<b>${m.wa}-${m.wb}</b>${sd('b')}</div>`}).join('')).join('')+'</div>'}
 function fill(M){M.forEach(m=>{['a','b'].forEach(s=>{const sr=m['s'+s];if(m[s]||!sr)return;const src=M.find(x=>x.id==sr);if(src&&src.w){m[s]=src.w;m[s+'n']=src.w==src.a?src.an:src.bn;D.doc('matches/'+m.id).update({[s]:m[s],[s+'n']:m[s+'n']}).catch(()=>{})}})})}
 
 async function drawTr(){$('#main').innerHTML='<div class="p"><p class="m">جاري التحميل...</p></div>';const[t,m]=await Promise.all([D.collection('tourneys').orderBy('created','desc').get(),D.collection('matches').get()]),T=t.docs.map(d=>({id:d.id,...d.data()})),M=m.docs.map(d=>({id:d.id,...d.data()}));fill(M);
@@ -279,7 +281,43 @@ function stateGame(lv){clearInterval(sti);$('#nav').hidden=true;
   N.forEach(n=>{g.fillStyle=col(n.o);g.globalAlpha=n==sel?1:.85;g.beginPath();g.arc(n.x,n.y,n.r,0,7);g.fill();g.globalAlpha=1;g.fillStyle='#0b1126';g.font='bold 15px Cairo,sans-serif';g.textAlign='center';g.fillText(Math.floor(n.t),n.x,n.y+5)});
   Q.forEach(u=>{const x=u.a.x+(u.b.x-u.a.x)*u.p,y=u.a.y+(u.b.y-u.a.y)*u.p;g.fillStyle=col(u.o);g.beginPath();g.arc(x,y,9,0,7);g.fill();g.fillStyle='#0b1126';g.font='bold 10px sans-serif';g.fillText(u.n,x,y+3)})},50)}
 function stateExit(){clearInterval(sti);$('#nav').hidden=false;go('tr')}
-async function drawTr(){await drawTr0();const p=$('#main .p');if(!p)return;p.insertAdjacentHTML('afterbegin',stateMenu());
+async function drawTrB(){await drawTr0();const p=$('#main .p');if(!p)return;p.insertAdjacentHTML('afterbegin',stateMenu());
  try{const[a,b]=await Promise.all([D.collection('users').orderBy('votes','desc').limit(10).get(),D.collection('users').orderBy('followers','desc').limit(10).get()]),row=(d,i,k,l)=>{const u=d.data();return `<div class="u" onclick="openUser('${d.id}')" style="cursor:pointer"><span style="display:flex;gap:10px;align-items:center">${i+1}. ${av(u,1)}<b>${E(u.name)}</b></span><b>${u[k]||0} ${l}</b></div>`};
  p.insertAdjacentHTML('beforeend','<h3>🏅 الأكثر تصويتًا</h3>'+a.docs.map((d,i)=>row(d,i,'votes','صوت')).join('')+'<h3>🏅 الأكثر متابعين</h3>'+b.docs.map((d,i)=>row(d,i,'followers','متابع')).join(''))}catch(e){}}
+
+let stU=null,stT=null;
+const P16=[[60,500],[170,470],[290,500],[40,390],[150,370],[260,390],[330,300],[60,280],[180,270],[280,200],[40,170],[140,170],[240,100],[330,90],[70,60],[170,40]],DI=P16.map(a=>P16.map(b=>Math.sqrt((a[0]-b[0])*(a[0]-b[0])+(a[1]-b[1])*(a[1]-b[1]))));
+const rnd=s=>()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+function playM(id){D.doc('matches/'+id).get().then(d=>{if(!d.exists)return alert('المباراة مش موجودة');d.data().gm=='state'?stOn(id):playX(id)}).catch(e=>alert(e.message))}
+function playX(id){if(mu)mu();clearInterval(mt);$('#nav').hidden=true;$('#main').innerHTML='<div class="p" id="gm2"><p class="m">جاري فتح المباراة...</p></div>';
+ mu=D.doc('matches/'+id).onSnapshot(d=>{if(!d.exists)return showErr('المباراة مش موجودة');cm={id,...d.data()};try{if(!cm.b)$('#gm2').innerHTML='<button class="s" onclick="leaveM()">← رجوع</button><h2>في انتظار خصم...</h2><p class="m">أول ما حد ينضم هتبدأ اللعبة.</p>';else drawM(cm)}catch(e){showErr('خطأ: '+e.message)}},e=>showErr('تعذر فتح المباراة: '+e.message));
+ const ping=()=>{if(cm&&cm.b)D.doc('matches/'+id).update({[cm.a==me.id?'pa':'pb']:Date.now()}).catch(()=>{})};mt=setInterval(ping,15000);setTimeout(ping,1500)}
+async function stOn(id){clearInterval(sti);clearInterval(stT);if(mu)mu();if(stU)stU();$('#nav').hidden=true;
+ $('#main').innerHTML='<div class="p"><button class="s" onclick="stOff()">← رجوع</button><canvas id="sc" width="360" height="560" style="width:100%;background:#0b1126;border-radius:16px;touch-action:none"></canvas><p class="m" id="sm">جاري الاتصال...</p></div>';
+ const cv=$('#sc'),g=cv.getContext('2d');let M=null,O=[],S=null,off=0,my=0,done=0,sel=-1,tn=0;
+ try{const t1=Date.now();await D.doc('pings/'+me.id).set({t:firebase.firestore.FieldValue.serverTimestamp()});const pg=await D.doc('pings/'+me.id).get();off=pg.data().t.toMillis()-(t1+Date.now())/2}catch(e){return $('#sm').textContent='تعذر الاتصال: '+e.message}
+ mu=D.doc('matches/'+id).onSnapshot(d=>{M={id,...d.data()};my=M.a==me.id?1:2;if(M.a&&M.b&&!M.t0&&my==1)D.doc('matches/'+id).update({t0:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{})});
+ stU=D.collection('matches/'+id+'/orders').onSnapshot(q=>{O=q.docs.map(d=>({id:d.id,...d.data()}));S=null});
+ const adj=(a,b)=>DI[a][b]<135,T0=()=>M&&M.t0&&M.t0.toMillis?M.t0.toMillis()+3000:0,
+ init=()=>{const r=rnd(M.seed||1);return{k:0,w:0,N:P16.map((p,i)=>({o:i==0?1:i==15?2:0,t:i==0||i==15?30:8+Math.floor(r()*14)})),Q:[]}},
+ step=S=>{O.filter(o=>o.tk==S.k).sort((x,y)=>x.id<y.id?-1:1).forEach(o=>{const p=o.u==M.a?1:2,a=S.N[o.f],b=S.N[o.to];if(a&&b&&a.o==p&&adj(o.f,o.to)){const n=Math.floor(a.t*.5);if(n>=1){a.t-=n;S.Q.push({f:o.f,to:o.to,o:p,n,p:0})}}});
+  S.N.forEach(n=>{if(n.o&&n.t<80)n.t+=.12});S.Q.forEach(u=>{u.p+=7/DI[u.f][u.to];if(u.p>=1){u.d=1;const b=S.N[u.to];if(b.o==u.o)b.t+=u.n;else{b.t-=u.n;if(b.t<0){b.o=u.o;b.t=-b.t}}}});S.Q=S.Q.filter(u=>!u.d);S.k++;
+  const a1=S.N.some(n=>n.o==1)||S.Q.some(u=>u.o==1),a2=S.N.some(n=>n.o==2)||S.Q.some(u=>u.o==2);
+  if(!a1)S.w=2;else if(!a2)S.w=1;else if(S.k>=3000){const c=o=>S.N.filter(n=>n.o==o).length*1000+S.N.reduce((x,n)=>x+(n.o==o?n.t:0),0);S.w=c(1)>=c(2)?1:2}},
+ pt=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*360/r.width,(e.clientY-r.top)*560/r.height]},hit=(x,y)=>P16.findIndex(p=>Math.sqrt((p[0]-x)*(p[0]-x)+(p[1]-y)*(p[1]-y))<30),col=o=>o==0?'#6c7aa8':o==my?'#f2b134':'#ff5d5d';
+ cv.onpointerdown=e=>{const[x,y]=pt(e),i=hit(x,y);sel=i>=0&&S&&S.N[i].o==my?i:-1};
+ cv.onpointerup=e=>{if(sel<0||!S||S.w)return;const[x,y]=pt(e),i=hit(x,y);if(i>=0&&i!=sel&&adj(sel,i))D.collection('matches/'+id+'/orders').add({u:me.id,tk:tn+4,f:sel,to:i}).catch(er=>alert(er.message));sel=-1};
+ stT=setInterval(()=>{const t0=T0();if(!M||!M.b){$('#sm').textContent='في انتظار خصم...';return}if(!t0){$('#sm').textContent='بيتجهز...';return}
+  tn=Math.floor((Date.now()+off-t0)/100);if(tn<0){$('#sm').textContent='تبدأ بعد '+Math.ceil(-tn/10)+' ثانية';return}
+  if(!S)S=init();while(S.k<=tn&&!S.w)step(S);
+  if(S.w){$('#sm').textContent=S.w==my?'🏆 كسبت المعركة':'خسرت المعركة';if(!done&&S.w==my){done=1;D.doc('matches/'+id).update({[my==1?'wa':'wb']:2,w:me.id,st:'done'}).catch(()=>{})}}else $('#sm').textContent='اسحب من منطقتك الذهبية لمنطقة جنبها';
+  g.clearRect(0,0,360,560);g.strokeStyle='#25305e';for(let i=0;i<16;i++)for(let j=i+1;j<16;j++)if(adj(i,j)){g.beginPath();g.moveTo(P16[i][0],P16[i][1]);g.lineTo(P16[j][0],P16[j][1]);g.stroke()}
+  g.textAlign='center';S.N.forEach((n,i)=>{g.fillStyle=col(n.o);g.globalAlpha=i==sel?1:.85;g.beginPath();g.arc(P16[i][0],P16[i][1],22,0,7);g.fill();g.globalAlpha=1;g.fillStyle='#0b1126';g.font='bold 15px Cairo,sans-serif';g.fillText(Math.floor(n.t),P16[i][0],P16[i][1]+5)});
+  S.Q.forEach(u=>{const a=P16[u.f],b=P16[u.to],x=a[0]+(b[0]-a[0])*u.p,y=a[1]+(b[1]-a[1])*u.p;g.fillStyle=col(u.o);g.beginPath();g.arc(x,y,9,0,7);g.fill();g.fillStyle='#0b1126';g.font='bold 10px sans-serif';g.fillText(u.n,x,y+3)})},50)}
+function stOff(){clearInterval(stT);if(stU)stU();stU=null;if(mu)mu();mu=null;$('#nav').hidden=false;go('tr')}
+async function qNew(gm){const r=D.collection('matches').doc();try{await r.set({t:'quick',gm,a:me.id,an:me.name,b:'',bn:'',board:'---------',turn:'a',g:1,wa:0,wb:0,w:'',st:'play',sa:'',sb:'',r:1,seed:Math.floor(Math.random()*1e9),created:Date.now()});playM(r.id)}catch(e){alert(e.message)}}
+async function qJoin(id){try{await D.doc('matches/'+id).update({b:me.id,bn:me.name});playM(id)}catch(e){alert('تعذر الانضمام: '+e.message)}}
+async function quickMenu(){const s=await D.collection('matches').where('t','==','quick').where('b','==','').get(),L=s.docs.filter(d=>d.data().a!=me.id&&!d.data().w&&d.data().created>Date.now()-18e4);
+ return `<div class="c2"><b>⚡ لعب سريع أونلاين</b><div class="row"><button onclick="qNew('xo')">إنشاء XO</button><button onclick="qNew('state')">إنشاء ستيت</button></div>`+(L.map(d=>`<div class="u"><span>${d.data().gm=='state'?'🌍 ستيت':'❌⭕ XO'} • ${E(d.data().an)}</span><button onclick="qJoin('${d.id}')">انضم</button></div>`).join('')||'<small class="m">مفيش لاعب مستني دلوقتي، اعمل لعبة وانتظر</small>')+'</div>'}
+async function drawTr(){await drawTrB();const p=$('#main .p');if(!p)return;try{p.insertAdjacentHTML('afterbegin',await quickMenu())}catch(e){}}
 </script></body></html>
