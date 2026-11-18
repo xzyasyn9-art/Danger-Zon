@@ -47,6 +47,8 @@ nav{border-top:1px solid var(--l);box-shadow:0 -8px 24px #0006}
 .av.s{width:38px;height:38px;font-size:16px}
 .c2{background:#ffffff08;border:1px solid var(--l);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:6px}
 .xg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:300px;margin:8px auto}.xo{aspect-ratio:1;font-size:44px;font-weight:900;padding:0}.xo:disabled{opacity:.9}
+button:not(.s):not(.v):not(.xo){background:linear-gradient(135deg,#f2b134,#ffd479);box-shadow:0 4px 14px #f2b13433}
+nav{border-radius:22px 22px 0 0;background:#161f44}.c2,.u,.lead-box{backdrop-filter:blur(6px)}
 </style></head><body>
 <div id="app"><main id="main"></main><nav id="nav" hidden></nav></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -230,7 +232,7 @@ function preview(x){const k=Object.keys(x.players||{}).length,names=Object.value
  if(x.type=='cup'){let n=2;while(n<Math.max(k,2))n*=2;h='<small class="m">خريطة الكأس (بتتحدد أسماؤها لما المسابقة تبدأ)</small>'+(()=>{let o='';for(let m=n;m>=2;m/=2)o+=`<div class="u"><span>${m==2?'النهائي':m==4?'نصف النهائي':m==8?'ربع النهائي':'الدور '+m}</span><b>${m/2} مباراة</b></div>`;return o})()+h}return h}
 
 let cm=null,mt=null,mw=[];
-async function drawTr(){$('#main').innerHTML='<div class="p"><p class="m">جاري التحميل...</p></div>';const[t,m]=await Promise.all([D.collection('tourneys').orderBy('created','desc').get(),D.collection('matches').get()]),T=t.docs.map(d=>({id:d.id,...d.data()})),M=m.docs.map(d=>({id:d.id,...d.data()}));fill(M);
+async function drawTr0(){$('#main').innerHTML='<div class="p"><p class="m">جاري التحميل...</p></div>';const[t,m]=await Promise.all([D.collection('tourneys').orderBy('created','desc').get(),D.collection('matches').get()]),T=t.docs.map(d=>({id:d.id,...d.data()})),M=m.docs.map(d=>({id:d.id,...d.data()}));fill(M);
  const done=T.filter(x=>x.status=='done'),act=T.filter(x=>x.status!='done');
  $('#main').innerHTML='<div class="p"><h3>🏆 غرفة الكؤوس</h3>'+(done.map(x=>`<div class="u"><span>🏆 ${x.type=='cup'?'كأس':'دوري'} ${E(x.name)} ${x.year||''}</span><b style="color:var(--a)">${E(x.wn||'')}</b></div>`).join('')||'<p class="m">لسه مفيش بطل.</p>')+'<h3>المسابقات</h3>'+(act.map(x=>{const inn=(x.players||{})[me.id]!=null,ms=M.filter(y=>y.t==x.id),mine=ms.filter(y=>!y.w&&y.st!='swap'&&(y.a==me.id||y.b==me.id)&&y.a&&y.b&&y.b!='BYE'),left=ms.filter(y=>!y.w&&(y.a==me.id||y.b==me.id)).length,full=Object.keys(x.players||{}).length>=(x.max||(x.type=='cup'?16:20));
   return `<div class="c2"><b>${E(x.name)} • ${x.type=='cup'?'كأس':'دوري'}</b><small class="m">جوائز 🪙 ${(x.prizes||[]).map(n=>(n||0).toLocaleString('ar-EG')).join(' / ')}</small>`+
@@ -250,4 +252,34 @@ function watchMatches(){mw.forEach(f=>f());mw=[];if(!me)return;['a','b'].forEach
 function banner(m){let b=$('#mb');if(!b){b=document.createElement('div');b.id='mb';b.style.cssText='position:fixed;top:8px;left:8px;right:8px;z-index:8;background:var(--a);color:#111936;border-radius:12px;padding:10px;font-weight:900;display:flex;justify-content:space-between;align-items:center;gap:8px';document.body.append(b)}
  b.innerHTML=`<span>⚔ خصمك جاهز للعب</span><button style="width:auto;background:#111936;color:var(--t)" onclick="$('#mb').remove();playM('${m.id}')">ادخل المباراة</button>`;setTimeout(()=>{const z=$('#mb');if(z)z.remove()},20000)}
 A.onAuthStateChanged(u=>{if(u)setTimeout(watchMatches,2000)});
+
+function showErr(m){const g=$('#gm2');if(g)g.innerHTML='<button class="s" onclick="leaveM()">← رجوع</button><p style="color:#ff8a80">'+E(m)+'</p>'}
+function playM(id){if(mu)mu();clearInterval(mt);$('#nav').hidden=true;$('#main').innerHTML='<div class="p" id="gm2"><p class="m">جاري فتح المباراة...</p></div>';
+ mu=D.doc('matches/'+id).onSnapshot(d=>{if(!d.exists)return showErr('المباراة مش موجودة');cm={id,...d.data()};try{drawM(cm)}catch(e){showErr('خطأ في العرض: '+e.message)}},e=>showErr('تعذر فتح المباراة: '+e.message));
+ const ping=()=>{if(cm)D.doc('matches/'+id).update({[cm.a==me.id?'pa':'pb']:Date.now()}).catch(()=>{})};mt=setInterval(ping,15000);setTimeout(ping,1500)}
+const stateMenu=()=>`<div class="c2"><b>🌍 ستيت — احتل العالم</b><small class="m">اسحب من منطقتك (الذهبي) لمنطقة جنبها عشان تهاجم. احتل كل المناطق وإنت كسبت. (ضد الذكاء الاصطناعي)</small><div class="row"><button onclick="stateGame(0)">سهل</button><button onclick="stateGame(1)">متوسط</button><button onclick="stateGame(2)">صعب</button></div></div>`;
+let sti=null;
+function stateGame(lv){clearInterval(sti);$('#nav').hidden=true;
+ const P=[[60,500],[170,470],[290,500],[40,390],[150,370],[260,390],[330,300],[60,280],[180,270],[280,200],[40,170],[140,170],[240,100],[330,90],[70,60],[170,40]],
+ N=P.map((p,i)=>({x:p[0],y:p[1],o:i==0?1:i==15?2:0,t:i==0||i==15?30:8+Math.floor(Math.random()*14),r:22})),L=[];N.forEach((a,i)=>N.forEach((b,j)=>{if(i<j&&Math.hypot(a.x-b.x,a.y-b.y)<135)L.push([i,j])}));
+ const adj=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y)<135,cfg=[[2200,.5,.7],[1400,.65,.9],[850,.8,1.1]][lv],Q=[];let sel=null,end=0,ac=0;
+ $('#main').innerHTML='<div class="p"><button class="s" onclick="stateExit()">← رجوع</button><canvas id="sc" width="360" height="560" style="width:100%;background:#0b1126;border-radius:16px;touch-action:none"></canvas><p class="m" id="sm">اسحب من منطقتك (الذهبي) لمنطقة جنبها</p></div>';
+ const cv=$('#sc'),g=cv.getContext('2d'),pos=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*360/r.width,(e.clientY-r.top)*560/r.height]},at=(x,y)=>N.find(n=>Math.hypot(n.x-x,n.y-y)<30),
+ send=(a,b,o,f)=>{const n=Math.floor(a.t*f);if(n<1)return;a.t-=n;Q.push({a,b,o,n,p:0,d:Math.hypot(a.x-b.x,a.y-b.y)})},col=o=>o==1?'#f2b134':o==2?'#ff5d5d':'#6c7aa8';
+ cv.onpointerdown=e=>{if(end)return;const[x,y]=pos(e),n=at(x,y);sel=n&&n.o==1?n:null};
+ cv.onpointerup=e=>{if(end||!sel)return;const[x,y]=pos(e),n=at(x,y);if(n&&n!=sel&&adj(sel,n))send(sel,n,1,.5);sel=null};
+ sti=setInterval(()=>{const dt=.05;if(!end){
+  N.forEach(n=>{if(n.o&&n.t<80)n.t+=dt*cfg[2]});
+  Q.forEach(u=>{u.p+=dt*70/u.d;if(u.p>=1){u.done=1;const b=u.b;if(b.o==u.o)b.t+=u.n;else{b.t-=u.n;if(b.t<0){b.o=u.o;b.t=-b.t}}}});
+  for(let i=Q.length-1;i>=0;i--)if(Q[i].done)Q.splice(i,1);
+  ac+=50;if(ac>=cfg[0]){ac=0;N.filter(n=>n.o==2&&n.t>10).forEach(a=>{const c=N.filter(b=>b.o!=2&&adj(a,b)).sort((x,y)=>x.t-y.t)[0];if(c&&a.t*cfg[1]>c.t+2)send(a,c,2,cfg[1]);else{const f=N.find(b=>b.o==2&&b!=a&&adj(a,b)&&b.t<a.t*.4);if(f&&a.t>30)send(a,f,2,.4)}})}
+  const me1=N.some(n=>n.o==1)||Q.some(u=>u.o==1),ai=N.some(n=>n.o==2)||Q.some(u=>u.o==2);
+  if(!ai){end=1;$('#sm').innerHTML='🏆 احتليت العالم! <button onclick="stateGame('+lv+')">العب تاني</button>'}else if(!me1){end=1;$('#sm').innerHTML='خسرت المعركة <button onclick="stateGame('+lv+')">حاول تاني</button>'}}
+  g.clearRect(0,0,360,560);g.strokeStyle='#25305e';L.forEach(([i,j])=>{g.beginPath();g.moveTo(N[i].x,N[i].y);g.lineTo(N[j].x,N[j].y);g.stroke()});
+  N.forEach(n=>{g.fillStyle=col(n.o);g.globalAlpha=n==sel?1:.85;g.beginPath();g.arc(n.x,n.y,n.r,0,7);g.fill();g.globalAlpha=1;g.fillStyle='#0b1126';g.font='bold 15px Cairo,sans-serif';g.textAlign='center';g.fillText(Math.floor(n.t),n.x,n.y+5)});
+  Q.forEach(u=>{const x=u.a.x+(u.b.x-u.a.x)*u.p,y=u.a.y+(u.b.y-u.a.y)*u.p;g.fillStyle=col(u.o);g.beginPath();g.arc(x,y,9,0,7);g.fill();g.fillStyle='#0b1126';g.font='bold 10px sans-serif';g.fillText(u.n,x,y+3)})},50)}
+function stateExit(){clearInterval(sti);$('#nav').hidden=false;go('tr')}
+async function drawTr(){await drawTr0();const p=$('#main .p');if(!p)return;p.insertAdjacentHTML('afterbegin',stateMenu());
+ try{const[a,b]=await Promise.all([D.collection('users').orderBy('votes','desc').limit(10).get(),D.collection('users').orderBy('followers','desc').limit(10).get()]),row=(d,i,k,l)=>{const u=d.data();return `<div class="u" onclick="openUser('${d.id}')" style="cursor:pointer"><span style="display:flex;gap:10px;align-items:center">${i+1}. ${av(u,1)}<b>${E(u.name)}</b></span><b>${u[k]||0} ${l}</b></div>`};
+ p.insertAdjacentHTML('beforeend','<h3>🏅 الأكثر تصويتًا</h3>'+a.docs.map((d,i)=>row(d,i,'votes','صوت')).join('')+'<h3>🏅 الأكثر متابعين</h3>'+b.docs.map((d,i)=>row(d,i,'followers','متابع')).join(''))}catch(e){}}
 </script></body></html>
